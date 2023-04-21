@@ -1,20 +1,27 @@
 {
-  "name": "your-project-name",
-  "version": "1.0.0",
-  "description": "Your project description",
+  "name": "aivy",
+  "version": "0.0.1",
+  "description": "MITM",
   "main": "dist/index.js",
-  "repository": "https://github.com/DeathVenom54/typescript-minimal-starter.git",
-  "author": "DeathVenom54 <fdragon602@gmail.com>",
+  "repository": "",
+  "author": "MrPot <https://twitter.com/blankblankee>",
   "license": "MIT",
-  "private": true,
+  "private": false,
   "devDependencies": {
     "@types/node": "^17.0.21",
     "prettier": "^2.5.1",
     "typescript": "^4.6.2"
   },
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "npm run build && node dist/index.js",
     "build": "tsc",
     "dev": "tsc -W"
+  },
+  "dependencies": {
+    "@fastify/swagger": "^8.3.1",
+    "@fastify/swagger-ui": "^1.8.0",
+    "fastify": "^4.15.0",
+    "frida": "^16.0.17",
+    "tiny-typed-emitter": "^2.1.0"
   }
 }
