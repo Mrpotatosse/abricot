@@ -1,9 +1,11 @@
 import BaseApp from './app';
+import DofusModule from './dofus_module';
 import InjectorModule from './injector_module';
 import TestModule from './test_module';
 
 async function main() {
     const app = new BaseApp();
+
     await app.init();
 
     // todo: dynamic import module from yaml/json config file
@@ -26,6 +28,7 @@ async function main() {
 
     app.import_module('test', TestModule, app);
     app.import_module('hook', InjectorModule, app);
+    app.import_module('dofus', DofusModule, app);
 
     await app.run();
 }
