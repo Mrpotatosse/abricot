@@ -7,14 +7,19 @@ export interface DofusModuleEvent extends InjectorModuleEvent {}
 export default class DofusModule extends InjectorModule {
     event: TypedEmitter<DofusModuleEvent>;
     ports: Array<number>;
-    injected: Array<number>;
 
-    constructor(id: string, app: AppState, script_path: string, ports: Array<number>) {
-        super(id, app, script_path);
+    constructor(app: AppState, script_path: string, ports: Array<number>, process_filter: Array<string>) {
+        super(app, script_path);
 
         this.ports = ports;
         this.event = new TypedEmitter<DofusModuleEvent>();
-        this.injected = [];
+
+        this.event.addListener('onImported', () => {
+            this.monitor(process_filter);
+        });
+        this.event.addListener('onProcessDetected', (process) => {
+            this.inject(process.pid);
+        });
     }
 
     async inject(pid: number): Promise<number> {

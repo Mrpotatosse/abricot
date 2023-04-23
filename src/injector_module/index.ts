@@ -1,8 +1,8 @@
 import { TypedEmitter } from 'tiny-typed-emitter';
-import AppModule, { AppModuleEvent } from '../app/module';
 import AppState from '../app';
 import { SendMessage, ErrorMessage, attach, Message } from 'frida';
 import { readFileSync } from 'fs';
+import MonitorModule, { MonitorModuleEvent } from '../monitor_module';
 
 export interface SendMessageWithPayload extends SendMessage {
     payload: MessagePayload;
@@ -21,17 +21,17 @@ export interface IInjectorRequestBody {
     pid: number;
 }
 
-export interface InjectorModuleEvent extends AppModuleEvent {
+export interface InjectorModuleEvent extends MonitorModuleEvent {
     onMessage: (message: SendMessageWithPayload, data: Buffer | null) => void;
     onErrorMessage: (message: ErrorMessage, data: Buffer | null) => void;
 }
 
-export default class InjectorModule extends AppModule {
+export default class InjectorModule extends MonitorModule {
     event: TypedEmitter<InjectorModuleEvent>;
     scan_script: string;
 
-    constructor(id: string, app: AppState, script_path: string) {
-        super(id, app);
+    constructor(app: AppState, script_path: string) {
+        super(app);
         this.event = new TypedEmitter<InjectorModuleEvent>();
         this.scan_script = readFileSync(script_path).toString();
 
@@ -39,10 +39,10 @@ export default class InjectorModule extends AppModule {
             Body: IInjectorRequestBody;
         }>(
             'POST',
-            `/${id}.injector/inject`,
+            `/${new.target.name}.injector/inject`,
             {
-                description: 'Execute and inject a script',
-                tags: ['Injector API Endpoints'],
+                description: 'Inject scan script on a process',
+                tags: ['Modules API Endpoints'],
                 summary: 'Execute and inject',
                 body: {
                     type: 'object',
@@ -87,7 +87,6 @@ export default class InjectorModule extends AppModule {
                         },
                     };
                 } catch (err: any) {
-                    console.log(err);
                     return {
                         code: 400,
                     };
@@ -114,13 +113,10 @@ export default class InjectorModule extends AppModule {
                 } else if (this.is_error_message(message)) {
                     this.event.emit('onErrorMessage', message, data);
                 }
-
-                console.log(message);
             });
             await script.load();
             return pid;
         } catch (e) {
-            console.log('inject', e);
             return -1;
         }
     }

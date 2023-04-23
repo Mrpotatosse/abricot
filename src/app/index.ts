@@ -69,7 +69,7 @@ export default class AppState {
             throw `module '${id}' already exists`;
         }
 
-        this.modules[id] = new module(id, ...args);
+        this.modules[id] = new module(...args);
         this.modules[id].event.emit('onImported', this.modules[id]);
         return this.modules[id] as Module;
     }

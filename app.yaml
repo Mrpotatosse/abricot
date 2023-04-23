@@ -11,4 +11,5 @@ app:
         - {src}/injector_module/scan_script.js
         - 5555
           443
+        - Dofus.exe
         

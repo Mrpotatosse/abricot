@@ -9,8 +9,8 @@ export interface TestModuleEvent extends AppModuleEvent {
 export default class TestModule extends AppModule {
     event: TypedEmitter<TestModuleEvent>;
 
-    constructor(id: string, app: AppState) {
-        super(id, app);
+    constructor(app: AppState) {
+        super(app);
 
         this.event = new TypedEmitter<TestModuleEvent>();
 
