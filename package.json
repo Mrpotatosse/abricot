@@ -9,6 +9,7 @@
   "private": false,
   "devDependencies": {
     "@types/node": "^17.0.21",
+    "@types/string-template": "^1.0.2",
     "prettier": "^2.5.1",
     "typescript": "^4.6.2"
   },
@@ -23,6 +24,8 @@
     "fastify": "^4.15.0",
     "frida": "^16.0.17",
     "got": "^11.8.6",
-    "tiny-typed-emitter": "^2.1.0"
+    "string-template": "^1.0.0",
+    "tiny-typed-emitter": "^2.1.0",
+    "yaml": "^2.2.1"
   }
 }

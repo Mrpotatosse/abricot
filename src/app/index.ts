@@ -11,6 +11,9 @@ import Fastify, {
 import FastifySwagger from '@fastify/swagger';
 import FastifySwaggerUi from '@fastify/swagger-ui';
 import AppModule from './module';
+import { join } from 'path';
+import { ROOT } from '../constants';
+import AppConfig, { load_config } from './config';
 
 type AppModuleList = { [key: string]: AppModule };
 type AnyParameters = Array<any>;
@@ -19,9 +22,11 @@ export default class AppState {
     args: Array<string>;
     fastify: FastifyInstance;
     modules: AppModuleList;
+    config: AppConfig;
 
     constructor() {
         this.args = [];
+        this.config = load_config(join(ROOT, 'app.yaml'));
         this.fastify = Fastify({
             logger: false,
         });
@@ -45,14 +50,14 @@ export default class AppState {
         });
 
         await this.fastify.register(FastifySwaggerUi, {
-            routePrefix: '/api',
+            routePrefix: this.config.app.api.prefix ?? '/api',
         });
     }
 
     async run() {
         await this.fastify.ready();
         this.fastify.swagger();
-        this.fastify.listen({ port: 3000 });
+        this.fastify.listen({ port: this.config.app.api.port ?? 3000 });
     }
 
     import_module<Module extends AppModule>(
@@ -64,7 +69,7 @@ export default class AppState {
             throw `module '${id}' already exists`;
         }
 
-        this.modules[id] = new module(...args);
+        this.modules[id] = new module(id, ...args);
         this.modules[id].event.emit('onImported', this.modules[id]);
         return this.modules[id] as Module;
     }

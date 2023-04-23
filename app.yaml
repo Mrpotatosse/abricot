@@ -1,0 +1,14 @@
+app:
+  api:
+    prefix: /api
+    port: 3000
+  modules: 
+    - name: Test
+      path: {src}/test_module
+    - name: Dofus
+      path: {src}/dofus_module
+      args:
+        - {src}/injector_module/scan_script.js
+        - 5555
+          443
+        

@@ -7,9 +7,11 @@ export interface AppModuleEvent {
 }
 
 export default class AppModule {
+    id: string;
     event: TypedEmitter<AppModuleEvent>;
 
-    constructor(app: AppState) {
+    constructor(id: string, app: AppState) {
+        this.id = id;
         this.event = new TypedEmitter<AppModuleEvent>();
     }
 }

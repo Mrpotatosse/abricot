@@ -1,29 +1,45 @@
 import { TypedEmitter } from 'tiny-typed-emitter';
 import AppModule, { AppModuleEvent } from '../app/module';
 import AppState from '../app';
-import { attach } from 'frida';
+import { SendMessage, ErrorMessage, attach, Message } from 'frida';
 import { readFileSync } from 'fs';
+
+export interface SendMessageWithPayload extends SendMessage {
+    payload: MessagePayload;
+}
+
+export interface MessagePayload {
+    type: string;
+    host_ip: string;
+    host_port: number;
+    target_ip: string;
+    target_port: number;
+    pid: number;
+}
 
 export interface IInjectorRequestBody {
     pid: number;
 }
 
-export interface InjectorModuleEvent extends AppModuleEvent {}
+export interface InjectorModuleEvent extends AppModuleEvent {
+    onMessage: (message: SendMessageWithPayload, data: Buffer | null) => void;
+    onErrorMessage: (message: ErrorMessage, data: Buffer | null) => void;
+}
 
 export default class InjectorModule extends AppModule {
     event: TypedEmitter<InjectorModuleEvent>;
     scan_script: string;
 
-    constructor(app: AppState) {
-        super(app);
+    constructor(id: string, app: AppState, script_path: string) {
+        super(id, app);
         this.event = new TypedEmitter<InjectorModuleEvent>();
-        this.scan_script = readFileSync('e:/abricot/src/injector_module/scan_script.js').toString();
+        this.scan_script = readFileSync(script_path).toString();
 
         app.add_api_url<{
             Body: IInjectorRequestBody;
         }>(
             'POST',
-            '/injector.inject',
+            `/${id}.injector/inject`,
             {
                 description: 'Execute and inject a script',
                 tags: ['Injector API Endpoints'],
@@ -80,12 +96,26 @@ export default class InjectorModule extends AppModule {
         );
     }
 
+    is_send_message(message: Message): message is SendMessageWithPayload {
+        return message.type === 'send';
+    }
+
+    is_error_message(message: Message): message is ErrorMessage {
+        return message.type === 'error';
+    }
+
     async inject(pid: number): Promise<number> {
         try {
             const session = await attach(pid);
             const script = await session.createScript(this.scan_script);
-            script.message.connect((mes, data) => {
-                console.log('mes', mes, 'data', data);
+            script.message.connect((message, data) => {
+                if (this.is_send_message(message)) {
+                    this.event.emit('onMessage', message, data);
+                } else if (this.is_error_message(message)) {
+                    this.event.emit('onErrorMessage', message, data);
+                }
+
+                console.log(message);
             });
             await script.load();
             return pid;
