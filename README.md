@@ -6,9 +6,13 @@ to start
 
 `
 git clone https://github.com/Mrpotatosse/abricot.git
+
 cd abricot
+
 npm install
+
 npm start
+
 `
 
 You just have to launch Dofus from Ankama launcher. The injector will analyse every instance launched.
