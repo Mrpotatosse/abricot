@@ -1,20 +1,28 @@
 import { TypedEmitter } from 'tiny-typed-emitter';
 import AppState from '../app';
-import { SendMessage, ErrorMessage, attach, Message } from 'frida';
+import { SendMessage, ErrorMessage, attach, Message, spawn, resume } from 'frida';
 import { readFileSync } from 'fs';
 import MonitorModule, { MonitorModuleEvent } from '../monitor_module';
+
+export type MessagePayloadTypeConnect = 'connect';
+export type MessagePayloadTypeSend = 'send';
+export type MessagePayloadTypeRecv = 'recv';
+export type MessagePayloadType = MessagePayloadTypeSend | MessagePayloadTypeRecv | MessagePayloadTypeConnect;
+export type Ip = `${number}.${number}.${number}.${number}`;
+export type Address = `${Ip}:${number}`;
 
 export interface SendMessageWithPayload extends SendMessage {
     payload: MessagePayload;
 }
 
 export interface MessagePayload {
-    type: string;
-    host_ip: string;
+    type: MessagePayloadType;
+    host_ip: Ip;
     host_port: number;
-    target_ip: string;
+    target_ip: Ip;
     target_port: number;
     pid: number;
+    data_length: number;
 }
 
 export interface IInjectorRequestBody {
@@ -103,7 +111,14 @@ export default class InjectorModule extends MonitorModule {
         return message.type === 'error';
     }
 
-    async inject(pid: number): Promise<number> {
+    async spawn_and_inject(program: Array<string> | string): Promise<number> {
+        const pid = await spawn(program);
+        await this.inject(pid);
+        resume(pid);
+        return pid;
+    }
+
+    async inject(pid: number): Promise<void> {
         try {
             const session = await attach(pid);
             const script = await session.createScript(this.scan_script);
@@ -111,13 +126,13 @@ export default class InjectorModule extends MonitorModule {
                 if (this.is_send_message(message)) {
                     this.event.emit('onMessage', message, data);
                 } else if (this.is_error_message(message)) {
+                    console.log(message);
                     this.event.emit('onErrorMessage', message, data);
                 }
             });
             await script.load();
-            return pid;
         } catch (e) {
-            return -1;
+            console.error(e);
         }
     }
 }

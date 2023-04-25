@@ -12,10 +12,12 @@ export type ProcessInformations = {
     cmd: string;
 };
 
+export type ProcessInformationsWithBin = ProcessInformations & { bin?: string };
+
 export type MoniteredProcessList = { [key: number]: ProcessInformations };
 
 export interface MonitorModuleEvent extends AppModuleEvent {
-    onProcessDetected: (process: ProcessInformations) => void;
+    onProcessDetected: (process: ProcessInformationsWithBin) => void;
 }
 
 export default class MonitorModule extends AppModule {
@@ -55,6 +57,6 @@ export default class MonitorModule extends AppModule {
                     }
                 }
             }
-        }, 1000);
+        }, 2000);
     }
 }

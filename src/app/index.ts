@@ -57,6 +57,7 @@ export default class AppState {
     async run() {
         await this.fastify.ready();
         this.fastify.swagger();
+        console.log('app ready');
         this.fastify.listen({ port: this.config.app.api.port ?? 3000 });
     }
 

@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "MITM",
   "main": "dist/index.js",
-  "repository": "",
+  "repository": "https://github.com/Mrpotatosse/abricot.git",
   "author": "MrPot <https://twitter.com/blankblankee>",
   "license": "MIT",
   "private": false,

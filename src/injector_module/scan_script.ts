@@ -1,23 +1,49 @@
 // @ts-nocheck
 var connect_p = Module.getExportByName(null, 'connect');
 var send_p = Module.getExportByName(null, 'send');
-var socket_send = new NativeFunction(send_p, 'int', ['int', 'pointer', 'int', 'int']);
 var recv_p = Module.getExportByName(null, 'recv');
-var socket_recv = new NativeFunction(recv_p, 'int', ['int', 'pointer', 'int', 'int']);
+
+Interceptor.attach(connect_p, {
+    onEnter: function (args) {
+        this.sockfd = args[0].toInt32();
+
+        var sockaddr_p = args[1];
+        this.sa_family = sockaddr_p.add(1).readU8();
+        this.port = 256 * sockaddr_p.add(2).readU8() + sockaddr_p.add(3).readU8();
+        this.addr = '';
+        for (var i = 0; i < 4; i++) {
+            this.addr += sockaddr_p.add(4 + i).readU8(4);
+            if (i < 3) this.addr += '.';
+        }
+    },
+    onLeave: function (retval) {
+        const message = {
+            type: 'connect',
+            host_ip: '',
+            host_port: 0,
+            target_ip: this.addr,
+            target_port: this.port,
+            pid: Process.id,
+            data_length: 0,
+        };
+
+        send(message);
+    },
+});
 
 Interceptor.attach(send_p, {
     onEnter: function (args) {
-        this.sockfd = parseInt(args[0]);
-        this.buf = args[1];
-        this.len = args[2];
+        this.send_sockfd = args[0].toInt32();
+        this.send_buf = args[1];
+        this.send_len = args[2].toInt32();
+    },
+    onLeave: function (retval) {
+        const socket_type = Socket.type(this.send_sockfd);
+        const buffer = ptr(this.send_buf);
 
-        const socket_type = Socket.type(this.sockfd);
-
-        if (socket_type == 'tcp') {
-            const range_object = Process.getRangeByAddress(this.buf);
-
-            const host_address = Socket.localAddress(this.sockfd);
-            const target_address = Socket.peerAddress(this.sockfd);
+        if (socket_type === 'tcp') {
+            const host_address = Socket.localAddress(this.send_sockfd);
+            const target_address = Socket.peerAddress(this.send_sockfd);
 
             const message = {
                 type: 'send',
@@ -26,27 +52,27 @@ Interceptor.attach(send_p, {
                 target_ip: target_address.ip,
                 target_port: target_address.port,
                 pid: Process.id,
+                data_length: this.send_len,
             };
 
-            send(message, range_object.base.readByteArray(range_object.size));
+            send(message, buffer.readByteArray(this.send_len));
         }
     },
-    onLeave: function (retval) {},
 });
 
 Interceptor.attach(recv_p, {
     onEnter: function (args) {
-        this.sockfd = parseInt(args[0]);
-        this.buf = args[1];
-        this.len = args[2];
+        this.recv_sockfd = args[0].toInt32();
+        this.recv_buf = args[1];
+    },
+    onLeave: function (retval) {
+        const socket_type = Socket.type(this.recv_sockfd);
+        const buffer = ptr(this.recv_buf);
+        const length = retval.toInt32();
 
-        const socket_type = Socket.type(this.sockfd);
-
-        if (socket_type == 'tcp') {
-            const range_object = Process.getRangeByAddress(this.buf);
-
-            const host_address = Socket.localAddress(this.sockfd);
-            const target_address = Socket.peerAddress(this.sockfd);
+        if (socket_type === 'tcp' && length > 0) {
+            const host_address = Socket.localAddress(this.recv_sockfd);
+            const target_address = Socket.peerAddress(this.recv_sockfd);
 
             const message = {
                 type: 'recv',
@@ -55,10 +81,10 @@ Interceptor.attach(recv_p, {
                 target_ip: target_address.ip,
                 target_port: target_address.port,
                 pid: Process.id,
+                data_length: length,
             };
 
-            send(message, range_object.base.readByteArray(range_object.size));
+            send(message, buffer.readByteArray(length));
         }
     },
-    onLeave: function (retval) {},
 });
