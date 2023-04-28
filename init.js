@@ -1,4 +1,4 @@
-import { writeFileSync, existsSync } from 'fs';
+import { writeFileSync, existsSync, mkdir } from 'fs';
 
 if(!existsSync(process.argv[2])) {
   writeFileSync(process.argv[2], 
@@ -17,3 +17,6 @@ if(!existsSync(process.argv[2])) {
         - <DOFUS_GAME_PATH_WITHOUT_EXECUTABLE>
   `)
 }
+
+mkdir('bin', () => {});
+mkdir('gun', () => {})
