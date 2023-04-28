@@ -5,6 +5,7 @@ ONLY DOFUS 2.0 for now
 to start 
 
 `
+
 git clone https://github.com/Mrpotatosse/abricot.git
 
 cd abricot
@@ -20,3 +21,5 @@ NOTE: the program will execute another instance of dofus and close the one start
 it's an automatic process and it's required by the program to ensure that not packet will be lost.
 
 For now the content of every packet is not parsed ( I'll add it later )
+
+DO NOT USE OPENAI_MODULE YET! it's still on test. It is not ready yet.

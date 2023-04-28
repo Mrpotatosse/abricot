@@ -1,19 +1,34 @@
-import { ReaderBigEndianStream } from '../utils/io/reader_stream';
-import { DofusPacket } from './message';
+import { ReaderBigEndianStream } from '../utils/io/reader_stream.js';
 
-export default class DofusAnalyzer {
+export type Dofus2PacketSide = 'client' | 'server';
+
+export type Dofus2Packet = {
+    header: number;
+    id: number;
+
+    instance_id?: number;
+    data: Buffer;
+    length: number;
+
+    side: Dofus2PacketSide;
+};
+export type Dofus2MinimalPacket = Omit<Dofus2Packet, 'data'>;
+
+export type Dofus2ParsedPacket = Dofus2Packet & {};
+
+export default class Dofus2Analyzer {
     reader: ReaderBigEndianStream;
 
     constructor() {
         this.reader = new ReaderBigEndianStream();
     }
 
-    analyze(client_side: boolean): Array<DofusPacket> {
-        const result: Array<DofusPacket> = [];
+    analyze(client_side: boolean): Array<Dofus2Packet> {
+        const result: Array<Dofus2Packet> = [];
 
         while (this.reader.remnant_size() > 0) {
             if (this.reader.remnant_size() < 2) {
-                return result;
+                break;
             }
 
             const initial_offset = this.reader.offset;
@@ -24,14 +39,14 @@ export default class DofusAnalyzer {
 
             if (client_side && this.reader.remnant_size() < 4) {
                 this.reader.set_offset(initial_offset);
-                return result;
+                break;
             }
 
             const instance_id = client_side ? this.reader.read_uint32() : 0;
 
             if (this.reader.remnant_size() < static_header) {
                 this.reader.set_offset(initial_offset);
-                return result;
+                break;
             }
 
             let length = 0;
@@ -41,7 +56,7 @@ export default class DofusAnalyzer {
 
             if (this.reader.remnant_size() < length) {
                 this.reader.set_offset(initial_offset);
-                return result;
+                break;
             }
 
             const data = this.reader.read_bytes(length);

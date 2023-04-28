@@ -1,7 +1,7 @@
 import { parse } from 'yaml';
 import { readFileSync } from 'fs';
 import template from 'string-template';
-import { ROOT, SRC } from '../constants';
+import { ROOT, SRC } from '../constants.js';
 
 type AppConfig = {
     app: {

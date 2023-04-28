@@ -1,7 +1,7 @@
-import { TypedEmitter } from 'tiny-typed-emitter';
 import AppState from '../app';
-import AppModule, { AppModuleEvent } from '../app/module';
+import AppModule, { AppModuleEvent } from '../app/module.js';
 import find from 'find-process';
+import { EventMap } from 'typed-emitter';
 
 export type ProcessInformations = {
     pid: number;
@@ -13,22 +13,24 @@ export type ProcessInformations = {
 };
 
 export type ProcessInformationsWithBin = ProcessInformations & { bin?: string };
-
 export type MoniteredProcessList = { [key: number]: ProcessInformations };
 
-export interface MonitorModuleEvent extends AppModuleEvent {
-    onProcessDetected: (process: ProcessInformationsWithBin) => void;
-}
+export type MonitorModuleEvent<Event extends EventMap = {}> = AppModuleEvent<
+    {
+        onProcessDetected: (process: ProcessInformationsWithBin) => void;
+    } & Event
+>;
 
-export default class MonitorModule extends AppModule {
-    event: TypedEmitter<MonitorModuleEvent>;
+export default class MonitorModule<Map extends EventMap, Event extends MonitorModuleEvent> extends AppModule<
+    Map,
+    Event
+> {
     monitored_processes: MoniteredProcessList;
 
     constructor(app: AppState) {
         super(app);
 
         this.monitored_processes = {};
-        this.event = new TypedEmitter<MonitorModuleEvent>();
     }
 
     monitor(process_name: Array<string> | string) {
@@ -44,7 +46,7 @@ export default class MonitorModule extends AppModule {
 
         setInterval(async () => {
             for (let process_name of names) {
-                const processes = await find('name', process_name);
+                const processes = await find('name', process_name, true);
                 for (let process of processes) {
                     if (!(process.pid in this.monitored_processes)) {
                         this.monitored_processes[process.pid] = process;
@@ -57,6 +59,6 @@ export default class MonitorModule extends AppModule {
                     }
                 }
             }
-        }, 2000);
+        }, 1000);
     }
 }

@@ -1,22 +1,25 @@
-import { TypedEmitter } from 'tiny-typed-emitter';
-import AppModule, { AppModuleEvent } from '../app/module';
-import AppState from '../app';
+import AppModule, { AppModuleEvent } from '../app/module.js';
+import AppState from '../app/index.js';
+import { EventMap } from 'typed-emitter';
 
-export interface TestModuleEvent extends AppModuleEvent {
-    onTest: (value: any) => void;
-}
+export type TestModuleEvent<Event extends EventMap = {}> = AppModuleEvent<
+    {
+        onTest: (value: any) => void;
+    } & Event
+>;
 
-export default class TestModule extends AppModule {
-    event: TypedEmitter<TestModuleEvent>;
-
+export default class TestModule<Map extends EventMap, Event extends TestModuleEvent<Map>> extends AppModule<
+    Map,
+    Event
+> {
     constructor(app: AppState) {
         super(app);
 
-        this.event = new TypedEmitter<TestModuleEvent>();
+        this.event.addListener('onTest', 10 as any);
 
         app.add_api_url(
             'GET',
-            '/test.module/ok',
+            '/testmodule/ok',
             {
                 description: 'post some data',
                 tags: ['Test API Endpoints'],

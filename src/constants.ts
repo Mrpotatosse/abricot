@@ -1,4 +1,7 @@
-import { join } from 'path';
+import { join, dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
-export const ROOT = join(__dirname, '..');
-export const SRC = __dirname;
+const __filename = fileURLToPath(import.meta.url);
+
+export const SRC = resolve(dirname(__filename));
+export const ROOT = join(SRC, '..');

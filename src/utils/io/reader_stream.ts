@@ -1,5 +1,5 @@
-import { FilterStartWith } from '../types';
-import CustomStream from './stream';
+import { FilterStartWith } from '../types/index.js';
+import CustomStream from './stream.js';
 
 export type BufferReadMethods = FilterStartWith<keyof Buffer, 'read'>;
 
@@ -54,7 +54,7 @@ class ReaderStream extends CustomStream {
             8,
         ) as bigint;
     }
-    read_uint64() {
+    read_uint64(): bigint {
         return this.dynamic_buffer_call(
             this.endian === 'big' ? 'readBigUInt64BE' : 'readBigUInt64LE',
             this.offset,

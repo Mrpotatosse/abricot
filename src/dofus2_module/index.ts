@@ -1,34 +1,42 @@
-import { TypedEmitter } from 'tiny-typed-emitter';
-import AppState from '../app';
+import AppState from '../app/index.js';
 import InjectorModule, {
     Address,
     InjectorModuleEvent,
     MessagePayloadTypeRecv,
     MessagePayloadTypeSend,
     SendMessageWithPayload,
-} from '../injector_module';
-import DofusAnalyzer from './analyzer';
+} from '../injector_module/index.js';
+import Dofus2Analyzer, { Dofus2MinimalPacket, Dofus2Packet } from './analyzer.js';
 import { kill, pid } from 'process';
-import { ProcessInformationsWithBin } from '../monitor_module';
-import { DofusPacket } from './message';
+import { ProcessInformationsWithBin } from '../monitor_module/index.js';
+import { Dofus2InformationsSchema, Dofus2PacketHistoryRouteInterface, Dofus2PacketHistorySchema } from './api.js';
+import { join } from 'path';
+import { EventMap } from 'typed-emitter';
 
 export type SendOrRecv = MessagePayloadTypeSend | MessagePayloadTypeRecv;
-export type DofusPacketAnalyzer = {
-    [key in SendOrRecv]: DofusAnalyzer;
+export type Dofus2PacketAnalyzer = {
+    send: Dofus2Analyzer;
+    recv: Dofus2Analyzer;
+    history: Array<Dofus2MinimalPacket>;
 };
-export type DofusAnalyzerListKey = `${number}=${Address}+${Address}`;
-export type DofusAnalyzerList = { [key: DofusAnalyzerListKey]: DofusPacketAnalyzer };
+export type Dofus2AnalyzerListKey = `pid=${number}&host=${Address}&target=${Address}`;
+export type Dofus2AnalyzerList = { [key: Dofus2AnalyzerListKey]: Dofus2PacketAnalyzer };
 
-export interface DofusModuleEvent extends InjectorModuleEvent {
-    onDofusPacket: (packet: DofusPacket) => void;
-}
+export type Dofus2ModuleEvent<Event extends EventMap = {}> = InjectorModuleEvent<
+    {
+        onDofusPacket: (packet: Dofus2Packet) => void;
+    } & Event
+>;
 
-export default class Dofus2Module extends InjectorModule {
-    event: TypedEmitter<DofusModuleEvent>;
+export default class Dofus2Module<Map extends EventMap, Event extends Dofus2ModuleEvent> extends InjectorModule<
+    Map,
+    Event
+> {
     ports: Array<number>;
-    analyzer: DofusAnalyzerList;
+    analyzer: Dofus2AnalyzerList;
     ignore_ips: Array<string>;
     linked_client: Array<{ original_pid: number; fake_pid: number }>;
+    game_path: string;
 
     constructor(
         app: AppState,
@@ -36,11 +44,12 @@ export default class Dofus2Module extends InjectorModule {
         ports: Array<number> | number,
         process_filter: Array<string> | string,
         ignore_ips: Array<string> | string,
+        game_path: string,
     ) {
         super(app, script_path);
 
+        this.game_path = game_path;
         this.ports = Array.isArray(ports) ? ports : [ports];
-        this.event = new TypedEmitter<DofusModuleEvent>();
         this.ignore_ips = Array.isArray(ignore_ips) ? ignore_ips : [ignore_ips];
 
         this.analyzer = {};
@@ -58,10 +67,39 @@ export default class Dofus2Module extends InjectorModule {
         this.event.addListener('onMessage', (message, data) => {
             this.analyze_message(message, data);
         });
+
+        app.add_api_url(
+            'GET',
+            `/${this.module_api_name()}/informations`,
+            Dofus2InformationsSchema,
+            async (req, res) => {
+                return {
+                    data: {
+                        ignore_ips: this.ignore_ips,
+                        ports: this.ports,
+                        analyzer: Object.keys(this.analyzer),
+                    },
+                };
+            },
+        );
+        app.add_api_url<Dofus2PacketHistoryRouteInterface>(
+            'GET',
+            `/${this.module_api_name()}/history/:key`,
+            Dofus2PacketHistorySchema,
+            async (req, res) => {
+                return {
+                    data: {
+                        messages: this.analyzer[req.params.key].history
+                            .filter((x) => !req.query.side || x.side === req.query.side)
+                            .slice(-(req.query.limit ?? 100)),
+                    },
+                };
+            },
+        );
     }
 
     analyze_message(message: SendMessageWithPayload, data: Buffer | null) {
-        const key: DofusAnalyzerListKey = `${message.payload.pid}=${message.payload.host_ip}:${message.payload.host_port}+${message.payload.target_ip}:${message.payload.target_port}`;
+        const key: Dofus2AnalyzerListKey = `pid=${message.payload.pid}&host=${message.payload.host_ip}:${message.payload.host_port}&target=${message.payload.target_ip}:${message.payload.target_port}`;
 
         if (this.ignore_ips.includes(message.payload.target_ip)) {
             return;
@@ -69,13 +107,6 @@ export default class Dofus2Module extends InjectorModule {
 
         if (!this.ports.includes(message.payload.target_port)) {
             return;
-        }
-
-        if (!(key in this.analyzer)) {
-            this.analyzer[key] = {
-                send: new DofusAnalyzer(),
-                recv: new DofusAnalyzer(),
-            };
         }
 
         if (message.payload.type === 'connect') {
@@ -88,8 +119,17 @@ export default class Dofus2Module extends InjectorModule {
                 );
             }
         } else {
+            if (!(key in this.analyzer)) {
+                this.analyzer[key] = {
+                    send: new Dofus2Analyzer(),
+                    recv: new Dofus2Analyzer(),
+                    history: [],
+                };
+            }
+
             this.analyzer[key][message.payload.type].reader.add(data, message.payload.data_length);
             const packets = this.analyzer[key][message.payload.type].analyze(message.payload.type === 'send');
+            this.analyzer[key].history.push(...packets.map((x) => x as Dofus2MinimalPacket));
             console.log(
                 key,
                 message.payload.type,
@@ -105,8 +145,8 @@ export default class Dofus2Module extends InjectorModule {
 
     async close_and_reopen(process: ProcessInformationsWithBin) {
         const cmd_splitted = process.cmd.split(' ').map((x) => {
-            if (x === process.name && process.bin) {
-                return process.bin;
+            if (x === process.name) {
+                return process.bin ? process.bin : join(this.game_path, process.name);
             }
             return x;
         });

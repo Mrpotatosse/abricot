@@ -1,8 +1,10 @@
-import { TypedEmitter } from 'tiny-typed-emitter';
-import AppState from '../app';
+import AppState from '../app/index.js';
 import { SendMessage, ErrorMessage, attach, Message, spawn, resume } from 'frida';
 import { readFileSync } from 'fs';
-import MonitorModule, { MonitorModuleEvent } from '../monitor_module';
+import MonitorModule, { MonitorModuleEvent } from '../monitor_module/index.js';
+import { resolve } from 'path';
+import { InjectorInjectSchema } from './api.js';
+import { EventMap } from 'typed-emitter';
 
 export type MessagePayloadTypeConnect = 'connect';
 export type MessagePayloadTypeSend = 'send';
@@ -29,78 +31,37 @@ export interface IInjectorRequestBody {
     pid: number;
 }
 
-export interface InjectorModuleEvent extends MonitorModuleEvent {
-    onMessage: (message: SendMessageWithPayload, data: Buffer | null) => void;
-    onErrorMessage: (message: ErrorMessage, data: Buffer | null) => void;
-}
+export type InjectorModuleEvent<Event extends EventMap = {}> = MonitorModuleEvent<
+    {
+        onMessage: (message: SendMessageWithPayload, data: Buffer | null) => void;
+        onErrorMessage: (message: ErrorMessage, data: Buffer | null) => void;
+    } & Event
+>;
 
-export default class InjectorModule extends MonitorModule {
-    event: TypedEmitter<InjectorModuleEvent>;
+export default class InjectorModule<Map extends EventMap, Event extends InjectorModuleEvent> extends MonitorModule<
+    Map,
+    Event
+> {
     scan_script: string;
 
     constructor(app: AppState, script_path: string) {
         super(app);
-        this.event = new TypedEmitter<InjectorModuleEvent>();
-        this.scan_script = readFileSync(script_path).toString();
+        this.scan_script = readFileSync(resolve(script_path)).toString();
 
         app.add_api_url<{
             Body: IInjectorRequestBody;
-        }>(
-            'POST',
-            `/${new.target.name}.injector/inject`,
-            {
-                description: 'Inject scan script on a process',
-                tags: ['Modules API Endpoints'],
-                summary: 'Execute and inject',
-                body: {
-                    type: 'object',
-                    properties: {
-                        pid: { type: 'integer' },
-                    },
-                },
-                response: {
-                    200: {
-                        description: 'Successful response',
-                        type: 'object',
-                        properties: {
-                            code: { type: 'integer' },
-                            data: {
-                                type: 'object',
-                                properties: {
-                                    pid: { type: 'integer' },
-                                },
-                            },
-                        },
-                    },
-                    400: {
-                        description: 'Default response',
-                        type: 'object',
-                        properties: {
-                            code: { type: 'integer' },
-                            reason: { type: 'string' },
-                        },
-                    },
-                },
-            },
-            async (request, result) => {
-                try {
-                    const { pid } = request.body;
+        }>('POST', `/${this.module_api_name()}/inject`, InjectorInjectSchema, async (request, result) => {
+            const { pid } = request.body;
 
-                    const r = await this.inject(pid);
+            const r = await this.inject(pid);
 
-                    return {
-                        code: 200,
-                        data: {
-                            pid: r,
-                        },
-                    };
-                } catch (err: any) {
-                    return {
-                        code: 400,
-                    };
-                }
-            },
-        );
+            return {
+                code: 200,
+                data: {
+                    pid: r,
+                },
+            };
+        });
     }
 
     is_send_message(message: Message): message is SendMessageWithPayload {
