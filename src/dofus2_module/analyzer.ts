@@ -11,10 +11,19 @@ export type Dofus2Packet = {
     length: number;
 
     side: Dofus2PacketSide;
+    timestamp: Date;
 };
-export type Dofus2MinimalPacket = Omit<Dofus2Packet, 'data'>;
+export type Dofus2MinimalPacket = Omit<Dofus2Packet, 'data' | 'header'>;
 
 export type Dofus2ParsedPacket = Dofus2Packet & {};
+
+export interface Dofus2PacketAnalyzer {
+    send: Dofus2Analyzer;
+    recv: Dofus2Analyzer;
+
+    push_history(...list: Array<Dofus2MinimalPacket>): Promise<void>;
+    get_history(): Promise<Array<Dofus2MinimalPacket>>;
+}
 
 export default class Dofus2Analyzer {
     reader: ReaderBigEndianStream;
@@ -68,6 +77,7 @@ export default class Dofus2Analyzer {
                 data,
                 length,
                 side: client_side ? 'client' : 'server',
+                timestamp: new Date(),
             });
         }
 

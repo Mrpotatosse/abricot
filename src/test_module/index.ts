@@ -1,4 +1,8 @@
-import AppModule, { AppModuleEvent } from '../app/module.js';
+/**
+ * this is more like a template than a test
+ */
+
+import Module, { AppModuleEvent } from '../app/module.js';
 import AppState from '../app/index.js';
 import { EventMap } from 'typed-emitter';
 
@@ -8,10 +12,7 @@ export type TestModuleEvent<Event extends EventMap = {}> = AppModuleEvent<
     } & Event
 >;
 
-export default class TestModule<Map extends EventMap, Event extends TestModuleEvent<Map>> extends AppModule<
-    Map,
-    Event
-> {
+export default class TestModule<Map extends EventMap, Event extends TestModuleEvent> extends Module<Map, Event> {
     constructor(app: AppState) {
         super(app);
 

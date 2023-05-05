@@ -1,6 +1,6 @@
 import { FastifySchema, RouteGenericInterface } from 'fastify';
 import { Dofus2PacketSide } from './analyzer.js';
-import { Dofus2AnalyzerListKey, SendOrRecv } from './index.js';
+import { Dofus2AnalyzerListKey } from './index.js';
 
 export const Dofus2InformationsSchema: FastifySchema = {
     description: 'List dofus2 informations',
@@ -48,6 +48,7 @@ export const Dofus2PacketHistorySchema: FastifySchema = {
             side: {
                 type: 'string',
                 description: 'Dofus analyzer side (client or server)',
+                enum: ['client', 'server'],
             },
             limit: {
                 type: 'integer',
@@ -73,6 +74,7 @@ export const Dofus2PacketHistorySchema: FastifySchema = {
                                     instance_id: { type: 'integer' },
                                     length: { type: 'integer' },
                                     side: { type: 'string' },
+                                    timestamp: { type: 'string', format: 'date-time' },
                                 },
                             },
                         },
@@ -97,5 +99,49 @@ export interface Dofus2PacketHistoryRouteInterface extends RouteGenericInterface
     Querystring: {
         side?: Dofus2PacketSide;
         limit?: number;
+    };
+}
+
+export const Dofus2BotofuSchema: FastifySchema = {
+    description: 'Dofus2 botofu',
+    tags: ['Modules API Endpoints'],
+    body: {
+        type: 'object',
+        properties: {
+            exe_path: { type: 'string' },
+            swf_path: { type: 'string' },
+            out_path: { type: 'string' },
+        },
+    },
+    response: {
+        200: {
+            description: 'Successful response',
+            type: 'object',
+            properties: {
+                data: {
+                    type: 'object',
+                    properties: {
+                        success: {
+                            type: 'boolean',
+                        },
+                    },
+                },
+            },
+        },
+        default: {
+            description: 'Default response',
+            type: 'object',
+            properties: {
+                reason: { type: 'string' },
+            },
+        },
+    },
+};
+
+export interface Dofus2BotofuRouteInterface extends RouteGenericInterface {
+    Body: {
+        exe_path: string;
+        swf_path: string;
+        out_path: string;
     };
 }

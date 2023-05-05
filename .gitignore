@@ -9,8 +9,10 @@ models
 
 app.yaml
 
-memory
-
 gun
 
 bin
+
+test.ts
+
+llm_module

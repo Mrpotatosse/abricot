@@ -23,24 +23,14 @@ export type AddApiUrlHandler<CustomInterface extends RouteGenericInterface> = (
     >,
 ) => void;
 
-/*export interface AppModuleEvent {
-    onImported: (app: AppModule<AppModuleEvent>) => void;
-    onDisposed: (app: AppModule<AppModuleEvent>) => void;
-}*/
-
-/*export interface ExtendedModuleEvent<Event extends EventMap = {}> extends TypedEventEmitter<Event> {
-    onImported: (app: AppModule) => void;
-    onDisposed: (app: AppModule) => void;
-}
-*/
-export type AppModuleEvent<Event extends EventMap = {}> = TypedEventEmitter<
+export type AppModuleEvent<Event extends object = {}> = TypedEventEmitter<
     {
         onImported: (app: AppModule<{}, AppModuleEvent>) => void;
         onDisposed: (app: AppModule<{}, AppModuleEvent>) => void;
     } & Event
 >;
 
-export default class AppModule<Map extends EventMap, Event extends AppModuleEvent<Map>> {
+export class AppModule<Map extends object, Event extends AppModuleEvent<Map>> {
     event: Event;
 
     constructor(app: AppState) {
@@ -50,4 +40,13 @@ export default class AppModule<Map extends EventMap, Event extends AppModuleEven
     module_api_name(): string {
         return this.constructor.name.toLowerCase();
     }
+
+    event_for_websocket(): Array<string> {
+        return ['onImported', 'onDisposed'];
+    }
 }
+
+export default abstract class Module<Map extends EventMap, Event extends AppModuleEvent<Map>> extends AppModule<
+    Map,
+    Event
+> {}

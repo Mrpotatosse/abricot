@@ -62,6 +62,22 @@ class ReaderStream extends CustomStream {
         ) as bigint;
     }
 
+    read_double(): number {
+        return this.dynamic_buffer_call(
+            this.endian === 'big' ? 'readDoubleBE' : 'readDoubleLE',
+            this.offset,
+            8,
+        ) as number;
+    }
+
+    read_float(): number {
+        return this.dynamic_buffer_call(
+            this.endian === 'big' ? 'readFloatBE' : 'readFloatLE',
+            this.offset,
+            4,
+        ) as number;
+    }
+
     read_bytes(length: number): Buffer {
         const result = this.buffer.slice(this.offset, this.offset + length);
         this.offset += length;
@@ -71,6 +87,33 @@ class ReaderStream extends CustomStream {
     read_string(): string {
         const length = this.read_uint16();
         return this.read_bytes(length).toString('utf8');
+    }
+
+    read_var(): number | bigint {
+        let result = 0n;
+        let byte_length = 0;
+        for (let i = 0n; i < 64n; i += 7n) {
+            const byte = BigInt(this.read_uint8());
+            result += (byte & 127n) << i;
+            byte_length += 1;
+            if ((byte & 128n) === 0n) {
+                return byte_length <= 4 ? Number(result) : result;
+            }
+        }
+
+        throw new Error('too much data');
+    }
+
+    read_var_short(): number {
+        return this.read_var() as number;
+    }
+
+    read_var_int(): number {
+        return this.read_var() as number;
+    }
+
+    read_var_long(): bigint {
+        return this.read_var() as bigint;
     }
 }
 

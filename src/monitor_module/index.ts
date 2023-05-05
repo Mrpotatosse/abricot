@@ -1,5 +1,5 @@
 import AppState from '../app';
-import AppModule, { AppModuleEvent } from '../app/module.js';
+import Module, { AppModuleEvent } from '../app/module.js';
 import find from 'find-process';
 import { EventMap } from 'typed-emitter';
 
@@ -21,16 +21,19 @@ export type MonitorModuleEvent<Event extends EventMap = {}> = AppModuleEvent<
     } & Event
 >;
 
-export default class MonitorModule<Map extends EventMap, Event extends MonitorModuleEvent> extends AppModule<
-    Map,
-    Event
-> {
+export default class MonitorModule<Map extends EventMap, Event extends MonitorModuleEvent> extends Module<Map, Event> {
     monitored_processes: MoniteredProcessList;
+
+    event_for_websocket(): string[] {
+        return [...super.event_for_websocket(), 'onProcessDetected'];
+    }
 
     constructor(app: AppState) {
         super(app);
 
         this.monitored_processes = {};
+
+        this.event.addListener('onImported', () => {});
     }
 
     monitor(process_name: Array<string> | string) {
@@ -59,6 +62,6 @@ export default class MonitorModule<Map extends EventMap, Event extends MonitorMo
                     }
                 }
             }
-        }, 1000);
+        }, 1500);
     }
 }

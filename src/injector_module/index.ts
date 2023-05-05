@@ -43,6 +43,9 @@ export default class InjectorModule<Map extends EventMap, Event extends Injector
     Event
 > {
     scan_script: string;
+    event_for_websocket(): string[] {
+        return [...super.event_for_websocket(), 'onMessage', 'onErrorMessage'];
+    }
 
     constructor(app: AppState, script_path: string) {
         super(app);

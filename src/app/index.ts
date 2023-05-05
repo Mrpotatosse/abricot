@@ -10,14 +10,16 @@ import Fastify, {
 } from 'fastify';
 import FastifySwagger from '@fastify/swagger';
 import FastifySwaggerUi from '@fastify/swagger-ui';
+import FastifyWebSocket from '@fastify/websocket';
 import AppModule, { AppModuleEvent } from './module.js';
 import { join } from 'path';
 import { ROOT, SRC } from '../constants.js';
 import AppConfig, { load_config } from './config.js';
-import { ModuleListSchema } from './api.js';
+import { ModuleListSchema, WebSocketApiSchema } from './api.js';
 import { ArgumentParser } from 'argparse';
 import { readFileSync } from 'fs';
 import { createRequire } from 'module';
+import JSONBig, { parse, stringify } from 'json-bigint';
 
 type AppModuleList = { [key: string]: AppModule<{}, AppModuleEvent> };
 type AnyParameters = Array<any>;
@@ -30,14 +32,14 @@ export default class AppState {
     __runned: boolean;
     argument: any;
     package_informations: any;
-    require: NodeRequire;
+    jsonparser: { parse: typeof parse; stringify: typeof stringify };
+    static require: NodeRequire = createRequire(SRC);
 
     constructor() {
         this.fastify = Fastify({
             logger: false,
         });
 
-        this.require = createRequire(SRC);
         this.modules = {};
         this.package_informations = JSON.stringify(readFileSync(`${ROOT}/package.json`));
 
@@ -50,6 +52,7 @@ export default class AppState {
         });
 
         this.argument = this.argument_parser.parse_args();
+        this.jsonparser = JSONBig({ storeAsString: true });
 
         this.config = load_config(join(ROOT, this.argument.config));
         this.__runned = false;
@@ -77,12 +80,36 @@ export default class AppState {
 
         await this.fastify.register(FastifySwaggerUi, {
             routePrefix: this.config.app.api.prefix ?? '/api',
-            transformSpecification: (obj, req, res) => {
+            transformSpecification: (obj: any) => {
                 return {
                     ...obj,
                     collectionFormat: 'multi',
                 };
             },
+        });
+
+        await this.fastify.register(FastifyWebSocket);
+        await this.fastify.register(async (app) => {
+            app.get(
+                this.config.app.api.ws ?? '/ws',
+                { websocket: true, schema: WebSocketApiSchema },
+                (connection, req) => {
+                    for (let module_name in this.modules) {
+                        const module = this.modules[module_name];
+                        const events = module.event_for_websocket();
+                        for (let event of events) {
+                            module.event.addListener(event as any, (...args: Array<any>) => {
+                                connection.socket.send(
+                                    this.jsonparser.stringify({
+                                        event,
+                                        args,
+                                    }),
+                                );
+                            });
+                        }
+                    }
+                },
+            );
         });
 
         this.fastify.setErrorHandler(async (err, req, res) => {
@@ -131,7 +158,7 @@ export default class AppState {
 
     add_api_url<CustomInterface extends RouteGenericInterface>(
         method: HTTPMethods | Array<HTTPMethods>,
-        url: string,
+        url: `/${string}`,
         schema: FastifySchema,
         handler: RouteHandlerMethod<
             RawServerDefault,

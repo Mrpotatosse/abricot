@@ -10,13 +10,19 @@ if(!existsSync(process.argv[2])) {
     - name: Dofus2
       path: {src}/dofus2_module/index.js
       args:
-        - dist/injector_module/scan_script.js
+        - {src}/injector_module/scan_script.js
         - 5555
         - [Dofus.exe]
         - [127.0.0.1, 0.0.0.0, localhost]
-        - <DOFUS_GAME_PATH_WITHOUT_EXECUTABLE>
+        - <DOFUS_FOLDER_PATH> 
+        - <BOTOFU_EXECUTABLE>
+    - name: LLM
+      path: {src}/llm_module/index.js
+      args:
+        - <OPENAI_API_KEY>
+        - gpt-3.5-turbo
   `)
 }
 
 mkdir('bin', () => {});
-mkdir('gun', () => {})
+mkdir('gun', () => {});
