@@ -16,11 +16,6 @@ if(!existsSync(process.argv[2])) {
         - [127.0.0.1, 0.0.0.0, localhost]
         - <DOFUS_FOLDER_PATH> 
         - <BOTOFU_EXECUTABLE>
-    - name: LLM
-      path: {src}/llm_module/index.js
-      args:
-        - <OPENAI_API_KEY>
-        - gpt-3.5-turbo
   `)
 }
 
