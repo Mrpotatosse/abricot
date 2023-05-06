@@ -37,8 +37,12 @@ To get a local copy up and running follow these simple example steps.
 
 ## Usage
 
+```sh
 http://localhost:3000/api -> for list of apis
+```
+```sh
 http://localhost:3000/ws -> for websocket event
+```
 
 ## Roadmap
 
