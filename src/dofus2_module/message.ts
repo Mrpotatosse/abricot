@@ -86,6 +86,13 @@ export type BotofuJson = {
     types: Array<BotofuJsonMessage>;
 };
 
+export type MessageOrType = 'message' | 'type';
+
+export interface Dofus2MessageAnalyzer {
+    push_history(...list: Array<Record<string, any>>): Promise<void>;
+    get_history(): Promise<Array<Record<string, any>>>;
+}
+
 export default class Dofus2Message {
     static readonly cache: NodeCache = new NodeCache();
     static dofus_data: BotofuJson;
@@ -93,7 +100,7 @@ export default class Dofus2Message {
     reader: DofusReader;
     base_data: BotofuJsonMessage;
     identifier: number | string;
-    decode_type: 'type' | 'message';
+    decode_type: MessageOrType;
 
     static get_message(identitifer: string | number): BotofuJsonMessage | undefined {
         if (!Dofus2Message.dofus_data) {
@@ -157,7 +164,7 @@ export default class Dofus2Message {
         return (writer?.replace('write', 'read') as DofusReaderMethod) ?? 'readByte';
     }
 
-    constructor(reader: DofusReader, identifier: number | string, type: 'message' | 'type') {
+    constructor(reader: DofusReader, identifier: number | string, type: MessageOrType) {
         this.reader = reader;
         this.identifier = identifier;
         this.decode_type = type;
@@ -167,7 +174,7 @@ export default class Dofus2Message {
         if (base_data) {
             this.base_data = base_data;
         } else {
-            throw new Error(`message with id: ${identifier} is not found on protocol.`);
+            throw new Error(`${type} with id: ${identifier} is not found on protocol.`);
         }
     }
 

@@ -1,4 +1,4 @@
-import { FastifySchema } from 'fastify';
+import { FastifySchema, RouteGenericInterface } from 'fastify';
 
 export const ModuleListSchema: FastifySchema = {
     description: 'List all imported module',
@@ -23,7 +23,7 @@ export const ModuleListSchema: FastifySchema = {
 
 export const WebSocketApiSchema: FastifySchema = {
     description: 'Websocket event handler',
-    tags: ['Websocket API Endpoints'],
+    tags: ['Websocket Endpoints'],
     response: {
         200: {
             description: 'Successful response',

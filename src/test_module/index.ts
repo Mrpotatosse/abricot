@@ -14,7 +14,7 @@ export type TestModuleEvent<Event extends EventMap = {}> = AppModuleEvent<
 
 export default class TestModule<Map extends EventMap, Event extends TestModuleEvent> extends Module<Map, Event> {
     constructor(app: AppState) {
-        super(app);
+        super(app, {});
 
         this.event.addListener('onTest', 10 as any);
 

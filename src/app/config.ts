@@ -12,6 +12,7 @@ type AppConfig = {
 
 type AppConfigApi = {
     prefix: string;
+    ip: string;
     port: number;
     ws: string;
 };

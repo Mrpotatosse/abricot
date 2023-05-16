@@ -14,8 +14,67 @@ export const Dofus2InformationsSchema: FastifySchema = {
                     type: 'object',
                     properties: {
                         ignore_ips: { type: 'array' },
-                        ports: { type: 'array' },
+                        authorize_ports: { type: 'array' },
                         analyzer: { type: 'array' },
+                    },
+                },
+            },
+        },
+        default: {
+            description: 'Default response',
+            type: 'object',
+            properties: {
+                reason: { type: 'string' },
+            },
+        },
+    },
+};
+
+export interface Dofus2MessageHistoryRouteInterface extends RouteGenericInterface {
+    Params: {
+        key: Dofus2AnalyzerListKey;
+    };
+    Querystring: {
+        limit?: number;
+    };
+}
+
+export const Dofus2MessageHistorySchema: FastifySchema = {
+    description: 'List dofus2 last message history',
+    tags: ['Modules API Endpoints'],
+    params: {
+        type: 'object',
+        properties: {
+            key: {
+                type: 'string',
+                description: 'Dofus analyzer key',
+            },
+        },
+    },
+    querystring: {
+        type: 'object',
+        properties: {
+            limit: {
+                type: 'integer',
+                description: 'Message count limit',
+            },
+        },
+    },
+    response: {
+        200: {
+            description: 'Successful response',
+            type: 'object',
+            properties: {
+                data: {
+                    type: 'object',
+                    properties: {
+                        messages: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                additionalProperties: true,
+                            },
+                        },
                     },
                 },
             },

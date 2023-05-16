@@ -1,7 +1,7 @@
 import { ReaderBigEndianStream } from '../utils/io/reader_stream.js';
 import { FilterStartWith } from '../utils/types';
 
-export type DofusReaderMethod = FilterStartWith<keyof DofusReader, 'read'>;
+export type DofusReaderMethod = FilterStartWith<keyof DofusReader, `read${Capitalize<string>}`>;
 
 export class DofusReader extends ReaderBigEndianStream {
     readVarInt(): number {

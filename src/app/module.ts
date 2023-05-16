@@ -32,9 +32,11 @@ export type AppModuleEvent<Event extends object = {}> = TypedEventEmitter<
 
 export class AppModule<Map extends object, Event extends AppModuleEvent<Map>> {
     event: Event;
+    options: Record<string, any>;
 
-    constructor(app: AppState) {
+    constructor(app: AppState, options: Record<string, any>) {
         this.event = new EventEmitter() as Event;
+        this.options = options;
     }
 
     module_api_name(): string {

@@ -11,6 +11,7 @@ import Fastify, {
 import FastifySwagger from '@fastify/swagger';
 import FastifySwaggerUi from '@fastify/swagger-ui';
 import FastifyWebSocket from '@fastify/websocket';
+import FastifyMultipart from '@fastify/multipart';
 import AppModule, { AppModuleEvent } from './module.js';
 import { join } from 'path';
 import { ROOT, SRC } from '../constants.js';
@@ -32,7 +33,7 @@ export default class AppState {
     __runned: boolean;
     argument: any;
     package_informations: any;
-    jsonparser: { parse: typeof parse; stringify: typeof stringify };
+    static readonly jsonparser: { parse: typeof parse; stringify: typeof stringify } = JSONBig({ storeAsString: true });
     static require: NodeRequire = createRequire(SRC);
 
     constructor() {
@@ -52,13 +53,13 @@ export default class AppState {
         });
 
         this.argument = this.argument_parser.parse_args();
-        this.jsonparser = JSONBig({ storeAsString: true });
-
         this.config = load_config(join(ROOT, this.argument.config));
+
         this.__runned = false;
     }
 
     async init() {
+        await this.fastify.register(FastifyMultipart);
         await this.fastify.register(FastifySwagger, {
             openapi: {
                 info: {
@@ -94,13 +95,19 @@ export default class AppState {
                 this.config.app.api.ws ?? '/ws',
                 { websocket: true, schema: WebSocketApiSchema },
                 (connection, req) => {
+                    connection.socket.send(
+                        AppState.jsonparser.stringify({
+                            modules: Object.keys(this.modules),
+                        }),
+                    );
+
                     for (let module_name in this.modules) {
                         const module = this.modules[module_name];
                         const events = module.event_for_websocket();
                         for (let event of events) {
                             module.event.addListener(event as any, (...args: Array<any>) => {
                                 connection.socket.send(
-                                    this.jsonparser.stringify({
+                                    AppState.jsonparser.stringify({
                                         event,
                                         args,
                                     }),
