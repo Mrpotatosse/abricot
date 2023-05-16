@@ -17,3 +17,5 @@ radata
 
 src/gundb_module
 src/dofus2iblis_module
+
+package-lock.json
