@@ -290,7 +290,7 @@ export default class InjectorModule<Map extends EventMap, Event extends Injector
 
                     if (link) {
                         ///// remove comments - kill original
-                        //kill(link.original_pid);
+                        kill(link.original_pid);
                     }
 
                     this.linked_client = this.linked_client.filter((x) => x !== link);

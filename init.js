@@ -9,7 +9,7 @@ if(!existsSync(process.argv[2])) {
     port: 3000
   modules: 
     - name: Dofus2
-      path: {src}/dofus2iblis_module/index.js
+      path: {src}/dofus2_module/index.js
       args:
         - scripts:
             scan:
