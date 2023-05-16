@@ -36,6 +36,8 @@ export default class AppState {
     static readonly jsonparser: { parse: typeof parse; stringify: typeof stringify } = JSONBig({ storeAsString: true });
     static require: NodeRequire = createRequire(SRC);
 
+    clients: Array<WebSocket> = [];
+
     constructor() {
         this.fastify = Fastify({
             logger: false,
@@ -101,20 +103,11 @@ export default class AppState {
                         }),
                     );
 
-                    for (let module_name in this.modules) {
-                        const module = this.modules[module_name];
-                        const events = module.event_for_websocket();
-                        for (let event of events) {
-                            module.event.addListener(event as any, (...args: Array<any>) => {
-                                connection.socket.send(
-                                    AppState.jsonparser.stringify({
-                                        event,
-                                        args,
-                                    }),
-                                );
-                            });
-                        }
-                    }
+                    this.clients.push(connection.socket);
+
+                    connection.socket.addEventListener('close', () => {
+                        this.clients = this.clients.filter((x) => x !== connection.socket);
+                    });
                 },
             );
         });
@@ -137,6 +130,24 @@ export default class AppState {
         this.fastify.swagger();
         this.__runned = true;
         console.log('app ready');
+        for (let module_name in this.modules) {
+            const module = this.modules[module_name];
+            const events = module.event_for_websocket();
+            for (let event of events) {
+                const fn = (...args: Array<any>) => {
+                    for (let socket of this.clients) {
+                        socket.send(
+                            AppState.jsonparser.stringify({
+                                event,
+                                args,
+                            }),
+                        );
+                    }
+                };
+
+                module.event.addListener(event as any, fn);
+            }
+        }
         this.fastify.listen({ port: this.config.app.api.port ?? 3000 });
     }
 
