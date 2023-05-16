@@ -27,3 +27,4 @@ if(!existsSync(process.argv[2])) {
 
 mkdir('bin', () => {}); 
 mkdir('bin/history', () => {})
+mkdir('bin/botofu', () => {})
