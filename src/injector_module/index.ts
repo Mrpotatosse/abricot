@@ -289,7 +289,6 @@ export default class InjectorModule<Map extends EventMap, Event extends Injector
                     const link = this.linked_client.find((x) => x.fake_pid === message.payload.pid);
 
                     if (link) {
-                        ///// remove comments - kill original
                         kill(link.original_pid);
                     }
 

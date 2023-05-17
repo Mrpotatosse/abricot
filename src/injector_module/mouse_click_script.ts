@@ -13,39 +13,42 @@ const postMessage = new NativeFunction(user32.getExportByName('PostMessageW'), '
 ]);
 const getClientRect = new NativeFunction(user32.getExportByName('GetClientRect'), 'bool', ['pointer', 'pointer']);
 
+const pid = Process.id; // The process ID you want to find the window handle for
+let rect = Memory.alloc(16); // Allocate memory for RECT structure
+let hwnd = null;
+
+const enumWindowsProc = new NativeCallback(
+    (hWnd, lParam) => {
+        const lpdwProcessId = Memory.alloc(Process.pointerSize);
+        getWindowThreadProcessId(hWnd, lpdwProcessId);
+        if (lpdwProcessId.readU32() === pid) {
+            hwnd = hWnd;
+            return 0;
+        }
+        return 1;
+    },
+    'int',
+    ['pointer', 'int'],
+);
+
+enumWindows(enumWindowsProc, 0);
+getClientRect(hwnd, rect);
+
+const width = rect.add(8).readU32() - rect.readU32();
+const height = rect.add(12).readU32() - rect.add(4).readU32();
+
 send({
     type: 'request',
+    data: {
+        width,
+        height,
+    },
 });
 
 const op = recv((value) => {
     if (!value.x || !value.y) {
         throw `missing properties ${value} required { x: number; y: number }`;
     }
-
-    const pid = Process.id; // The process ID you want to find the window handle for
-
-    let rect = Memory.alloc(16); // Allocate memory for RECT structure
-    let hwnd = null;
-
-    const enumWindowsProc = new NativeCallback(
-        (hWnd, lParam) => {
-            const lpdwProcessId = Memory.alloc(Process.pointerSize);
-            getWindowThreadProcessId(hWnd, lpdwProcessId);
-            if (lpdwProcessId.readU32() === pid) {
-                hwnd = hWnd;
-                return 0;
-            }
-            return 1;
-        },
-        'int',
-        ['pointer', 'int'],
-    );
-
-    enumWindows(enumWindowsProc, 0);
-    getClientRect(hwnd, rect);
-
-    const width = rect.add(8).readU32() - rect.readU32();
-    const height = rect.add(12).readU32() - rect.add(4).readU32();
 
     const x = value.x * width; // The x-coordinate-ratio of the click position
     const y = value.y * height; // The y-coordinate-ratio of the click position
