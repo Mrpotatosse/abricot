@@ -24,9 +24,16 @@ import { existsSync } from 'fs';
 import { execFile } from 'child_process';
 import { ROOT } from '../constants.js';
 import { Dofus2PacketAnalyzerFileHistory } from './analyzer_history.js';
-import Dofus2Message, { Dofus2MessageAnalyzer } from './message.js';
+import Dofus2Message, {
+    BotofuJson,
+    BotofuJsonMessage,
+    Dofus2MessageAnalyzer,
+    LowWithLodash,
+    MessageOrType,
+} from './message.js';
 import { DofusReader } from './reader.js';
 import { Dofus2MessageHistoryFileHistory } from './message_history.js';
+import { JSONFile } from 'lowdb/node';
 
 export type SendOrRecv = MessagePayloadTypeSend | MessagePayloadTypeRecv;
 
@@ -49,8 +56,12 @@ export type Dofus2ModuleEvent<Event extends EventMap = {}> = InjectorModuleEvent
         ) => void;
         onDofusMessage: (
             payload: SendMessageWithPayload<ScanPayload>,
-            packet: Dofus2Packet,
-            decoder: Dofus2Message,
+            packet: Omit<Dofus2Packet, 'data'>,
+            decoder: {
+                base_data: BotofuJsonMessage;
+                identifier: number | string;
+                decode_type: MessageOrType;
+            },
             data: Record<string, any>,
         ) => void;
     } & Event
@@ -78,7 +89,17 @@ export default class Dofus2Module<Map extends EventMap, Event extends Dofus2Modu
             const botofu_output = join(ROOT, 'bin', 'botofu', 'protocol.json');
             const parsed = await this.botofu(options.botofu, join(options.folder, 'DofusInvoker.swf'), botofu_output);
             if (parsed) {
-                Dofus2Message.dofus_data = AppState.require(botofu_output);
+                const adapter = new JSONFile<BotofuJson>(botofu_output);
+                Dofus2Message.dofus_data = new LowWithLodash<BotofuJson>(adapter, {
+                    default: {
+                        field: {},
+                    },
+                    enumerations: [],
+                    messages: [],
+                    types: [],
+                });
+
+                await Dofus2Message.dofus_data.read();
             }
         });
         this.event.addListener(
@@ -86,9 +107,6 @@ export default class Dofus2Module<Map extends EventMap, Event extends Dofus2Modu
             async (m, d) => await this.analyze_message(m as SendMessageWithPayload<ScanPayload>, d),
         );
         this.event.addListener('onDofusPacket', async (m, p) => await this.decode_packet(m, p));
-        this.event.addListener('onDofusMessage', async (m, p, dec, dat) => {
-            // to do
-        });
 
         app.add_api_url('GET', `/dofus2/informations`, Dofus2InformationsSchema, async (req, res) => {
             return {
@@ -143,16 +161,18 @@ export default class Dofus2Module<Map extends EventMap, Event extends Dofus2Modu
         try {
             const reader = new DofusReader();
             reader.add(packet.data, packet.length);
-            const message_decoder = new Dofus2Message(reader, packet.id, 'message');
-            const data = message_decoder.decode();
-
-            await this.analyzer_list[key].message.push_history({
+            let message_decoder: Dofus2Message | null = new Dofus2Message(reader, packet.id, 'message');
+            let data: Record<string, any> | null = message_decoder.decode();
+            /// to do: improve with better optimization for with memory
+            /*this.analyzer_list[key].message.push_history({
                 __name__: message_decoder.base_data.name,
                 __id__: message_decoder.base_data.protocolID,
                 __side__: packet.side,
                 ...data,
-            });
+            });*/
             this.event.emit('onDofusMessage', message, packet, message_decoder, data);
+            message_decoder = null;
+            data = null;
         } catch (e: any) {
             console.error(e);
             this.event.emit('onDofusPacketNotParsed', message, packet, e.message);

@@ -35,7 +35,7 @@ export class AppModule<Map extends object, Event extends AppModuleEvent<Map>> {
     options: Record<string, any>;
 
     constructor(app: AppState, options: Record<string, any>) {
-        this.event = new EventEmitter() as Event;
+        this.event = new EventEmitter() as any as Event;
         this.options = options;
     }
 

@@ -1,6 +1,12 @@
 import NodeCache from 'node-cache';
 import { DofusReader, DofusReaderMethod } from './reader.js';
 import { DofusWriterMethod } from './writer.js';
+import lodash from 'lodash';
+import { Low } from 'lowdb';
+
+export class LowWithLodash<T> extends Low<T> {
+    chain: lodash.ExpChain<this['data']> = lodash.chain(this).get('data');
+}
 
 export type BotofuJsonEnumerationMembers = {
     [key: string]: string;
@@ -95,7 +101,7 @@ export interface Dofus2MessageAnalyzer {
 
 export default class Dofus2Message {
     static readonly cache: NodeCache = new NodeCache();
-    static dofus_data: BotofuJson;
+    static dofus_data: LowWithLodash<BotofuJson>; //BotofuJson;
 
     reader: DofusReader;
     base_data: BotofuJsonMessage;
@@ -110,16 +116,10 @@ export default class Dofus2Message {
 
         let message: BotofuJsonMessage | undefined = Dofus2Message.cache.get<BotofuJsonMessage>(key);
         if (message === undefined) {
-            message = Dofus2Message.dofus_data.messages.find((x) => {
-                if (typeof identitifer === 'string') {
-                    return x.name === identitifer;
-                }
-                if (typeof identitifer === 'number') {
-                    return x.protocolID === identitifer;
-                }
-
-                return false;
-            });
+            message = Dofus2Message.dofus_data.chain
+                .get('messages')
+                .find(typeof identitifer === 'string' ? { name: identitifer } : { protocolID: identitifer })
+                .value();
 
             if (message) {
                 Dofus2Message.cache.set<BotofuJsonMessage>(key, message);
@@ -137,16 +137,10 @@ export default class Dofus2Message {
 
         let message: BotofuJsonMessage | undefined = Dofus2Message.cache.get<BotofuJsonMessage>(key);
         if (message === undefined) {
-            message = Dofus2Message.dofus_data.types.find((x) => {
-                if (typeof identitifer === 'string') {
-                    return x.name === identitifer;
-                }
-                if (typeof identitifer === 'number') {
-                    return x.protocolID === identitifer;
-                }
-
-                return false;
-            });
+            message = Dofus2Message.dofus_data.chain
+                .get('types')
+                .find(typeof identitifer === 'string' ? { name: identitifer } : { protocolID: identitifer })
+                .value();
 
             if (message) {
                 Dofus2Message.cache.set<BotofuJsonMessage>(key, message);
@@ -210,7 +204,8 @@ export default class Dofus2Message {
         const result: Record<string, any> = {};
 
         if (this.base_data.super_serialize) {
-            Object.assign(result, new Dofus2Message(this.reader, this.base_data.super, this.decode_type).decode());
+            const parent = new Dofus2Message(this.reader, this.base_data.super, this.decode_type);
+            Object.assign(result, parent.decode());
         }
 
         const bools = this.base_data.fields
@@ -256,6 +251,11 @@ export default class Dofus2Message {
             }
         }
 
+        this.reader.remove_before_offset();
         return result;
+    }
+
+    clean() {
+        this.reader.clear();
     }
 }
